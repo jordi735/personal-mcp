@@ -243,7 +243,7 @@ export async function fetchAsMarkdown(
 
 function mapError(err: unknown): string {
   if (err instanceof Error) return err.message;
-  return "url_to_markdown failed: unknown error";
+  return "read_url failed: unknown error";
 }
 
 function errorResult(err: unknown) {
@@ -261,9 +261,9 @@ function jsonResult(data: unknown) {
 
 export function registerUrlTools(server: McpServer): void {
   server.registerTool(
-    "url_to_markdown",
+    "read_url",
     {
-      title: "URL to Markdown",
+      title: "Read URL as Markdown",
       description:
         "Fetch a URL and return the article body as clean markdown. " +
         "Uses Mozilla Readability to strip navigation/ads/footers, then Turndown " +
