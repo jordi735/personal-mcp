@@ -4,6 +4,7 @@ import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/
 import { z } from "zod";
 import { timingSafeEqual } from "node:crypto";
 import { registerGistTools } from "./tools/gists.js";
+import { registerUrlTools, closeBrowser } from "./tools/url.js";
 
 const authToken = process.env.MCP_AUTH_TOKEN;
 if (!authToken) {
@@ -44,6 +45,7 @@ function buildServer(): McpServer {
     }),
   );
   registerGistTools(server);
+  registerUrlTools(server);
   return server;
 }
 
@@ -73,3 +75,16 @@ const port = Number(process.env.PORT ?? 3000);
 app.listen(port, () => {
   console.log(`personal-mcp listening on http://localhost:${port}/mcp`);
 });
+
+async function shutdown(signal: string): Promise<void> {
+  console.log(`Received ${signal}, shutting down...`);
+  try {
+    await closeBrowser();
+  } catch (err) {
+    console.error("Error closing browser:", err);
+  }
+  process.exit(0);
+}
+
+process.on("SIGTERM", () => void shutdown("SIGTERM"));
+process.on("SIGINT", () => void shutdown("SIGINT"));

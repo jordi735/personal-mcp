@@ -23,13 +23,20 @@
   "homepage": "https://github.com/jordi735/personal-mcp#readme",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
+    "@mozilla/readability": "^0.6.0",
     "@octokit/rest": "^22.0.1",
     "express": "^5.2.1",
+    "jsdom": "^29.0.2",
+    "playwright": "^1.59.1",
+    "turndown": "^7.2.4",
+    "turndown-plugin-gfm": "^1.0.2",
     "zod": "^4.3.6"
   },
   "devDependencies": {
     "@types/express": "^5.0.6",
+    "@types/jsdom": "^28.0.1",
     "@types/node": "^25.6.0",
+    "@types/turndown": "^5.0.6",
     "tsx": "^4.21.0",
     "typescript": "^6.0.2"
   }
