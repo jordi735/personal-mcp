@@ -3,6 +3,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { z } from "zod";
 import { timingSafeEqual } from "node:crypto";
+import { registerGistTools } from "./tools/gists.js";
 
 const authToken = process.env.MCP_AUTH_TOKEN;
 if (!authToken) {
@@ -42,6 +43,7 @@ function buildServer(): McpServer {
       ],
     }),
   );
+  registerGistTools(server);
   return server;
 }
 

@@ -23,6 +23,7 @@
   "homepage": "https://github.com/jordi735/personal-mcp#readme",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
+    "@octokit/rest": "^22.0.1",
     "express": "^5.2.1",
     "zod": "^4.3.6"
   },
