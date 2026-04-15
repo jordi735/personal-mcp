@@ -3,15 +3,18 @@ import { Readability } from "@mozilla/readability";
 import TurndownService from "turndown";
 import { gfm } from "turndown-plugin-gfm";
 import { z } from "zod";
-import { chromium, type Browser } from "playwright";
+import { chromium, type Browser, type Page } from "playwright";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 const DEFAULT_USER_AGENT =
   process.env.URL_TOOL_USER_AGENT ??
   "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
 
-const DEFAULT_TIMEOUT_MS = 30_000;
+const DEFAULT_TIMEOUT_MS = 15_000;
 const NETWORK_IDLE_CAP_MS = 5_000;
+const AUTO_SCROLL_STEP_DELAY_MS = 250;
+const AUTO_SCROLL_BUDGET_MS = 5_000;
+const POST_SCROLL_IDLE_CAP_MS = 2_000;
 
 let browserPromise: Promise<Browser> | null = null;
 
@@ -67,6 +70,36 @@ function buildTurndown(): TurndownService {
   return td;
 }
 
+// Scroll the page by one viewport at a time to trigger lazy-load and
+// infinite-scroll handlers, walking every element through the viewport so
+// IntersectionObserver callbacks actually fire. Exits early when we're at the
+// bottom and scrollBy has nothing left to advance for two consecutive steps
+// (robust against brief network jitter that briefly stalls growth), or when
+// the wall-clock budget is exhausted.
+async function autoScroll(page: Page): Promise<void> {
+  const deadline = Date.now() + AUTO_SCROLL_BUDGET_MS;
+  let stuckSteps = 0;
+  while (Date.now() < deadline) {
+    const { scrolled, atBottom } = await page.evaluate(() => {
+      const before = window.scrollY;
+      window.scrollBy(0, window.innerHeight);
+      return {
+        scrolled: window.scrollY - before,
+        atBottom:
+          window.scrollY + window.innerHeight >=
+          document.documentElement.scrollHeight - 1,
+      };
+    });
+    if (atBottom && scrolled === 0) {
+      stuckSteps += 1;
+      if (stuckSteps >= 2) return;
+    } else {
+      stuckSteps = 0;
+    }
+    await page.waitForTimeout(AUTO_SCROLL_STEP_DELAY_MS);
+  }
+}
+
 async function fetchHtml(
   url: string,
   userAgent: string,
@@ -75,7 +108,7 @@ async function fetchHtml(
   const browser = await getBrowser();
   const context = await browser.newContext({
     userAgent,
-    viewport: { width: 1280, height: 800 },
+    viewport: { width: 1920, height: 1080 },
     locale: "en-US",
   });
   const page = await context.newPage();
@@ -97,6 +130,15 @@ async function fetchHtml(
       });
     } catch {
       // networkidle timed out — proceed with whatever the page has rendered.
+    }
+    await autoScroll(page);
+    // Give any scroll-triggered requests a brief window to settle.
+    try {
+      await page.waitForLoadState("networkidle", {
+        timeout: POST_SCROLL_IDLE_CAP_MS,
+      });
+    } catch {
+      // Same rationale as above — proceed regardless.
     }
     const html = await page.content();
     const finalUrl = page.url();
